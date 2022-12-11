@@ -4,11 +4,7 @@ service ntp start
 
 if [ "$1" == "" ];
 then
-./node_exporter \
---path.procfs=/host/proc \
---path.sysfs=/host/sys \
---path.rootfs=/host \
---collector.systemd
+$1
 else
-exec "$1"
+exec ./node_exporter "$@"
 fi
