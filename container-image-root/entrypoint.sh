@@ -4,7 +4,7 @@ service ntp start
 
 if [ "$1" == "" ];
 then
-$1
+bash
 else
 exec ./node_exporter "$@"
 fi
