@@ -1,65 +1,45 @@
-[![Docker](https://github.com/Dofamin/Prometheus-Docker/actions/workflows/docker-image-build-publish.yml/badge.svg)](https://github.com/Dofamin/Prometheus-Docker/actions/workflows/docker-image-build-publish.yml)
+[![Docker](https://github.com/Dofamin/Prometheus-Exporter/actions/workflows/docker-image-build-publish.yml/badge.svg)](https://github.com/Dofamin/Prometheus-Exporter/actions/workflows/docker-image-build-publish.yml)
 
-# Prometheus
+# Node exporter
 
-[![CircleCI](https://circleci.com/gh/prometheus/prometheus/tree/main.svg?style=shield)][circleci]
-[![Docker Repository on Quay](https://quay.io/repository/prometheus/prometheus/status)][quay]
-[![Docker Pulls](https://img.shields.io/docker/pulls/prom/prometheus.svg?maxAge=604800)][hub]
-[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus/prometheus)](https://goreportcard.com/report/github.com/prometheus/prometheus)
-[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/486/badge)](https://bestpractices.coreinfrastructure.org/projects/486)
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/prometheus/prometheus)
-[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/prometheus.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:prometheus)
+[![CircleCI](https://circleci.com/gh/prometheus/node_exporter/tree/master.svg?style=shield)][circleci]
+[![Buildkite status](https://badge.buildkite.com/94a0c1fb00b1f46883219c256efe9ce01d63b6505f3a942f9b.svg)](https://buildkite.com/prometheus/node-exporter)
+[![Docker Repository on Quay](https://quay.io/repository/prometheus/node-exporter/status)][quay]
+[![Docker Pulls](https://img.shields.io/docker/pulls/prom/node-exporter.svg?maxAge=604800)][hub]
+[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus/node_exporter)][goreportcard]
 
-Visit [prometheus.io](https://prometheus.io) for the full documentation,
-examples and guides.
+Prometheus exporter for hardware and OS metrics exposed by \*NIX kernels, written
+in Go with pluggable metric collectors.
 
-Prometheus, a [Cloud Native Computing Foundation](https://cncf.io/) project, is a systems and service monitoring system. It collects metrics
-from configured targets at given intervals, evaluates rule expressions,
-displays the results, and can trigger alerts when specified conditions are observed.
+The [Windows exporter](https://github.com/prometheus-community/windows_exporter) is recommended for Windows users.
+To expose NVIDIA GPU metrics, [prometheus-dcgm
+](https://github.com/NVIDIA/dcgm-exporter)
+can be used.
 
-The features that distinguish Prometheus from other metrics and monitoring systems are:
+## Installation and Usage
 
-* A **multi-dimensional** data model (time series defined by metric name and set of key/value dimensions)
-* PromQL, a **powerful and flexible query language** to leverage this dimensionality
-* No dependency on distributed storage; **single server nodes are autonomous**
-* An HTTP **pull model** for time series collection
-* **Pushing time series** is supported via an intermediary gateway for batch jobs
-* Targets are discovered via **service discovery** or **static configuration**
-* Multiple modes of **graphing and dashboarding support**
-* Support for hierarchical and horizontal **federation**
+If you are new to Prometheus and `node_exporter` there is a [simple step-by-step guide](https://prometheus.io/docs/guides/node-exporter/).
 
-## Architecture overview
+The `node_exporter` listens on HTTP port 9100 by default. See the `--help` output for more options.
 
-![Architecture overview](https://cdn.jsdelivr.net/gh/prometheus/prometheus@c34257d069c630685da35bcef084632ffd5d6209/documentation/images/architecture.svg)
+### Ansible
 
-## Install
-
-There are various ways of installing Prometheus.
-
-### Precompiled binaries
-
-Precompiled binaries for released versions are available in the
-[*download* section](https://prometheus.io/download/)
-on [prometheus.io](https://prometheus.io). Using the latest production release binary
-is the recommended way of installing Prometheus.
-See the [Installing](https://prometheus.io/docs/introduction/install/)
-chapter in the documentation for all the details.
-
+For automated installs with [Ansible](https://www.ansible.com/), there is the [Cloud Alchemy role](https://github.com/cloudalchemy/ansible-node-exporter).
 
 ## Bulding
 
 ```shell
-git clone https://github.com/Dofamin/Prometheus-Docker.git /srv/Prometheus/
+git clone https://github.com/Dofamin/Prometheus-Exporter.git /srv/Prometheus/
 
-docker build /srv/Sonarr/ --tag prometheus
+docker build /srv/Sonarr/ --tag prometheus-exporter
 
-docker rm --force Prometheus
+docker rm --force Prometheus-Exporter
 
 docker create \
-  --name=Prometheus \
-  -p 9090:9090/tcp \
-  -p 9090:9090/udp \
-  -v /srv/prometheus:/prometheus \
+  --name=Prometheus-Exporter \
+  -p 9100:9100/tcp \
+  -p 9100:9100/udp \
+  -v "/:/host:ro,rslave" \
   --restart unless-stopped \
   --memory="100m" \
   prometheus:latest
@@ -71,124 +51,298 @@ docker start Prometheus
 Or just pull from GitHub
 
 ```shell
-docker pull ghcr.io/dofamin/prometheus-docker:main
+docker pull ghcr.io/dofamin/prometheus-exporter:main
 
-docker rm --force Prometheus
+docker rm --force Prometheus-Exporter
 
 docker create \
-  --name=Prometheus \
-  -p 9090:9090/tcp \
-  -p 9090:9090/udp \
-  -v /srv/prometheus/data:/prometheus \
+  --name=Prometheus-Exporter \
+  -p 9100:9100/tcp \
+  -p 9100:9100/udp \
+  -v "/:/host:ro,rslave" \
   --restart unless-stopped \
   --memory="100m" \
   ghcr.io/dofamin/prometheus-docker:main
 
-docker start Prometheus
+docker start Prometheus-Exporter
 
 ```
 
-### Service discovery plugins
+## Collectors
 
-Prometheus is bundled with many service discovery plugins.
-When building Prometheus from source, you can edit the [plugins.yml](./plugins.yml)
-file to disable some service discoveries. The file is a yaml-formated list of go
-import path that will be built into the Prometheus binary.
+There is varying support for collectors on each operating system. The tables
+below list all existing collectors and the supported systems.
 
-After you have changed the file, you
-need to run `make build` again.
+Collectors are enabled by providing a `--collector.<name>` flag.
+Collectors that are enabled by default can be disabled by providing a `--no-collector.<name>` flag.
+To enable only some specific collector(s), use `--collector.disable-defaults --collector.<name> ...`.
 
-If you are using another method to compile Prometheus, `make plugins` will
-generate the plugins file accordingly.
+### Enabled by default
 
-If you add out-of-tree plugins, which we do not endorse at the moment,
-additional steps might be needed to adjust the `go.mod` and `go.sum` files. As
-always, be extra careful when loading third party code.
+Name     | Description | OS
+---------|-------------|----
+arp | Exposes ARP statistics from `/proc/net/arp`. | Linux
+bcache | Exposes bcache statistics from `/sys/fs/bcache/`. | Linux
+bonding | Exposes the number of configured and active slaves of Linux bonding interfaces. | Linux
+btrfs | Exposes btrfs statistics | Linux
+boottime | Exposes system boot time derived from the `kern.boottime` sysctl. | Darwin, Dragonfly, FreeBSD, NetBSD, OpenBSD, Solaris
+conntrack | Shows conntrack statistics (does nothing if no `/proc/sys/net/netfilter/` present). | Linux
+cpu | Exposes CPU statistics | Darwin, Dragonfly, FreeBSD, Linux, Solaris, OpenBSD
+cpufreq | Exposes CPU frequency statistics | Linux, Solaris
+diskstats | Exposes disk I/O statistics. | Darwin, Linux, OpenBSD
+dmi | Expose Desktop Management Interface (DMI) info from `/sys/class/dmi/id/` | Linux
+edac | Exposes error detection and correction statistics. | Linux
+entropy | Exposes available entropy. | Linux
+exec | Exposes execution statistics. | Dragonfly, FreeBSD
+fibrechannel | Exposes fibre channel information and statistics from `/sys/class/fc_host/`. | Linux
+filefd | Exposes file descriptor statistics from `/proc/sys/fs/file-nr`. | Linux
+filesystem | Exposes filesystem statistics, such as disk space used. | Darwin, Dragonfly, FreeBSD, Linux, OpenBSD
+hwmon | Expose hardware monitoring and sensor data from `/sys/class/hwmon/`. | Linux
+infiniband | Exposes network statistics specific to InfiniBand and Intel OmniPath configurations. | Linux
+ipvs | Exposes IPVS status from `/proc/net/ip_vs` and stats from `/proc/net/ip_vs_stats`. | Linux
+loadavg | Exposes load average. | Darwin, Dragonfly, FreeBSD, Linux, NetBSD, OpenBSD, Solaris
+mdadm | Exposes statistics about devices in `/proc/mdstat` (does nothing if no `/proc/mdstat` present). | Linux
+meminfo | Exposes memory statistics. | Darwin, Dragonfly, FreeBSD, Linux, OpenBSD
+netclass | Exposes network interface info from `/sys/class/net/` | Linux
+netdev | Exposes network interface statistics such as bytes transferred. | Darwin, Dragonfly, FreeBSD, Linux, OpenBSD
+netstat | Exposes network statistics from `/proc/net/netstat`. This is the same information as `netstat -s`. | Linux
+nfs | Exposes NFS client statistics from `/proc/net/rpc/nfs`. This is the same information as `nfsstat -c`. | Linux
+nfsd | Exposes NFS kernel server statistics from `/proc/net/rpc/nfsd`. This is the same information as `nfsstat -s`. | Linux
+nvme | Exposes NVMe info from `/sys/class/nvme/` | Linux
+os | Expose OS release info from `/etc/os-release` or `/usr/lib/os-release` | _any_
+powersupplyclass | Exposes Power Supply statistics from `/sys/class/power_supply` | Linux
+pressure | Exposes pressure stall statistics from `/proc/pressure/`. | Linux (kernel 4.20+ and/or [CONFIG\_PSI](https://www.kernel.org/doc/html/latest/accounting/psi.html))
+rapl | Exposes various statistics from `/sys/class/powercap`. | Linux
+schedstat | Exposes task scheduler statistics from `/proc/schedstat`. | Linux
+selinux | Exposes SELinux statistics. | Linux
+sockstat | Exposes various statistics from `/proc/net/sockstat`. | Linux
+softnet | Exposes statistics from `/proc/net/softnet_stat`. | Linux
+stat | Exposes various statistics from `/proc/stat`. This includes boot time, forks and interrupts. | Linux
+tapestats | Exposes statistics from `/sys/class/scsi_tape`. | Linux
+textfile | Exposes statistics read from local disk. The `--collector.textfile.directory` flag must be set. | _any_
+thermal | Exposes thermal statistics like `pmset -g therm`. | Darwin
+thermal\_zone | Exposes thermal zone & cooling device statistics from `/sys/class/thermal`. | Linux
+time | Exposes the current system time. | _any_
+timex | Exposes selected adjtimex(2) system call stats. | Linux
+udp_queues | Exposes UDP total lengths of the rx_queue and tx_queue from `/proc/net/udp` and `/proc/net/udp6`. | Linux
+uname | Exposes system information as provided by the uname system call. | Darwin, FreeBSD, Linux, OpenBSD
+vmstat | Exposes statistics from `/proc/vmstat`. | Linux
+xfs | Exposes XFS runtime statistics. | Linux (kernel 4.4+)
+zfs | Exposes [ZFS](http://open-zfs.org/) performance statistics. | FreeBSD, [Linux](http://zfsonlinux.org/), Solaris
 
-### Building the Docker image
+### Disabled by default
 
-The `make docker` target is designed for use in our CI system.
-You can build a docker image locally with the following commands:
+`node_exporter` also implements a number of collectors that are disabled by default.  Reasons for this vary by
+collector, and may include:
+* High cardinality
+* Prolonged runtime that exceeds the Prometheus `scrape_interval` or `scrape_timeout`
+* Significant resource demands on the host
 
-```bash
-make promu
-promu crossbuild -p linux/amd64
-make npm_licenses
-make common-docker-amd64
+You can enable additional collectors as desired by adding them to your
+init system's or service supervisor's startup configuration for
+`node_exporter` but caution is advised.  Enable at most one at a time,
+testing first on a non-production system, then by hand on a single
+production node.  When enabling additional collectors, you should
+carefully monitor the change by observing the `
+scrape_duration_seconds` metric to ensure that collection completes
+and does not time out.  In addition, monitor the
+`scrape_samples_post_metric_relabeling` metric to see the changes in
+cardinality.
+
+Name     | Description | OS
+---------|-------------|----
+buddyinfo | Exposes statistics of memory fragments as reported by /proc/buddyinfo. | Linux
+cgroups | A summary of the number of active and enabled cgroups | Linux
+devstat | Exposes device statistics | Dragonfly, FreeBSD
+drbd | Exposes Distributed Replicated Block Device statistics (to version 8.4) | Linux
+ethtool | Exposes network interface information and network driver statistics equivalent to `ethtool`, `ethtool -S`, and `ethtool -i`. | Linux
+interrupts | Exposes detailed interrupts statistics. | Linux, OpenBSD
+ksmd | Exposes kernel and system statistics from `/sys/kernel/mm/ksm`. | Linux
+lnstat | Exposes stats from `/proc/net/stat/`. | Linux
+logind | Exposes session counts from [logind](http://www.freedesktop.org/wiki/Software/systemd/logind/). | Linux
+meminfo\_numa | Exposes memory statistics from `/proc/meminfo_numa`. | Linux
+mountstats | Exposes filesystem statistics from `/proc/self/mountstats`. Exposes detailed NFS client statistics. | Linux
+network_route | Exposes the routing table as metrics | Linux
+ntp | Exposes local NTP daemon health to check [time](./docs/TIME.md) | _any_
+perf | Exposes perf based metrics (Warning: Metrics are dependent on kernel configuration and settings). | Linux
+processes | Exposes aggregate process statistics from `/proc`. | Linux
+qdisc | Exposes [queuing discipline](https://en.wikipedia.org/wiki/Network_scheduler#Linux_kernel) statistics | Linux
+runit | Exposes service status from [runit](http://smarden.org/runit/). | _any_
+slabinfo | Exposes slab statistics from `/proc/slabinfo`. Note that permission of `/proc/slabinfo` is usually 0400, so set it appropriately. | Linux
+supervisord | Exposes service status from [supervisord](http://supervisord.org/). | _any_
+sysctl | Expose sysctl values from `/proc/sys`. Use `--collector.sysctl.include(-info)` to configure. | Linux
+systemd | Exposes service and system status from [systemd](http://www.freedesktop.org/wiki/Software/systemd/). | Linux
+tcpstat | Exposes TCP connection status information from `/proc/net/tcp` and `/proc/net/tcp6`. (Warning: the current version has potential performance issues in high load situations.) | Linux
+wifi | Exposes WiFi device and station statistics. | Linux
+zoneinfo | Exposes NUMA memory zone metrics. | Linux
+
+### Perf Collector
+
+The `perf` collector may not work out of the box on some Linux systems due to kernel
+configuration and security settings. To allow access, set the following `sysctl`
+parameter:
+
+```
+sysctl -w kernel.perf_event_paranoid=X
 ```
 
-*NB* if you are on a Mac, you will need [gnu-tar](https://formulae.brew.sh/formula/gnu-tar).
+- 2 allow only user-space measurements (default since Linux 4.6).
+- 1 allow both kernel and user measurements (default before Linux 4.6).
+- 0 allow access to CPU-specific data but not raw tracepoint samples.
+- -1 no restrictions.
 
-## Using Prometheus as a Go Library
+Depending on the configured value different metrics will be available, for most
+cases `0` will provide the most complete set. For more information see [`man 2
+perf_event_open`](http://man7.org/linux/man-pages/man2/perf_event_open.2.html).
 
-### Remote Write
+By default, the `perf` collector will only collect metrics of the CPUs that
+`node_exporter` is running on (ie
+[`runtime.NumCPU`](https://golang.org/pkg/runtime/#NumCPU). If this is
+insufficient (e.g. if you run `node_exporter` with its CPU affinity set to
+specific CPUs), you can specify a list of alternate CPUs by using the
+`--collector.perf.cpus` flag. For example, to collect metrics on CPUs 2-6, you
+would specify: `--collector.perf --collector.perf.cpus=2-6`. The CPU
+configuration is zero indexed and can also take a stride value; e.g.
+`--collector.perf --collector.perf.cpus=1-10:5` would collect on CPUs
+1, 5, and 10.
 
-We are publishing our Remote Write protobuf independently at
-[buf.build](https://buf.build/prometheus/prometheus/assets).
+The `perf` collector is also able to collect
+[tracepoint](https://www.kernel.org/doc/html/latest/core-api/tracepoint.html)
+counts when using the `--collector.perf.tracepoint` flag. Tracepoints can be
+found using [`perf list`](http://man7.org/linux/man-pages/man1/perf.1.html) or
+from debugfs. And example usage of this would be
+`--collector.perf.tracepoint="sched:sched_process_exec"`.
 
-You can use that as a library:
+### Sysctl Collector
 
-```shell
-go get go.buf.build/protocolbuffers/go/prometheus/prometheus
+The `sysctl` collector can be enabled with `--collector.sysctl`. It supports exposing numeric sysctl values
+as metrics using the `--collector.sysctl.include` flag and string values as info metrics by using the
+`--collector.sysctl.include-info` flag. The flags can be repeated. For sysctl with multiple numeric values,
+an optional mapping can be given to expose each value as its own metric. Otherwise an `index` label is used
+to identify the different fields.
+
+#### Examples
+##### Numeric values
+###### Single values
+Using `--collector.sysctl.include=vm.user_reserve_kbytes`:
+`vm.user_reserve_kbytes = 131072` -> `node_sysctl_vm_user_reserve_kbytes 131072`
+
+###### Multiple values
+A sysctl can contain multiple values, for example:
+```
+net.ipv4.tcp_rmem = 4096	131072	6291456
+```
+Using `--collector.sysctl.include=net.ipv4.tcp_rmem` the collector will expose:
+```
+node_sysctl_net_ipv4_tcp_rmem{index="0"} 4096
+node_sysctl_net_ipv4_tcp_rmem{index="1"} 131072
+node_sysctl_net_ipv4_tcp_rmem{index="2"} 6291456
+```
+If the indexes have defined meaning like in this case, the values can be mapped to multiple metrics by appending the mapping to the --collector.sysctl.include flag:
+Using `--collector.sysctl.include=net.ipv4.tcp_rmem:min,default,max` the collector will expose:
+```
+node_sysctl_net_ipv4_tcp_rmem_min 4096
+node_sysctl_net_ipv4_tcp_rmem_default 131072
+node_sysctl_net_ipv4_tcp_rmem_max 6291456
 ```
 
-This is experimental.
+##### String values
+String values need to be exposed as info metric. The user selects them by using the `--collector.sysctl.include-info` flag.
 
-### Prometheus code base
+###### Single values
+`kernel.core_pattern = core` -> `node_sysctl_info{key="kernel.core_pattern_info", value="core"} 1`
 
-In order to comply with [go mod](https://go.dev/ref/mod#versions) rules,
-Prometheus release number do not exactly match Go module releases. For the
-Prometheus v2.y.z releases, we are publishing equivalent v0.y.z tags.
-
-Therefore, a user that would want to use Prometheus v2.35.0 as a library could do:
-
-```shell
-go get github.com/prometheus/prometheus@v0.35.0
+###### Multiple values
+Given the following sysctl:
+```
+kernel.seccomp.actions_avail = kill_process kill_thread trap errno trace log allow
+```
+Setting `--collector.sysctl.include-info=kernel.seccomp.actions_avail` will yield:
+```
+node_sysctl_info{key="kernel.seccomp.actions_avail", index="0", value="kill_process"} 1
+node_sysctl_info{key="kernel.seccomp.actions_avail", index="1", value="kill_thread"} 1
+...
 ```
 
-This solution makes it clear that we might break our internal Go APIs between
-minor user-facing releases, as [breaking changes are allowed in major version
-zero](https://semver.org/#spec-item-4).
+### Textfile Collector
 
-## React UI Development
+The `textfile` collector is similar to the [Pushgateway](https://github.com/prometheus/pushgateway),
+in that it allows exporting of statistics from batch jobs. It can also be used
+to export static metrics, such as what role a machine has. The Pushgateway
+should be used for service-level metrics. The `textfile` module is for metrics
+that are tied to a machine.
 
-For more information on building, running, and developing on the React-based UI, see the React app's [README.md](web/ui/README.md).
+To use it, set the `--collector.textfile.directory` flag on the `node_exporter` commandline. The
+collector will parse all files in that directory matching the glob `*.prom`
+using the [text
+format](http://prometheus.io/docs/instrumenting/exposition_formats/). **Note:** Timestamps are not supported.
 
-## More information
+To atomically push completion time for a cron job:
+```
+echo my_batch_job_completion_time $(date +%s) > /path/to/directory/my_batch_job.prom.$$
+mv /path/to/directory/my_batch_job.prom.$$ /path/to/directory/my_batch_job.prom
+```
 
-* Godoc documentation is available via [pkg.go.dev](https://pkg.go.dev/github.com/prometheus/prometheus). Due to peculiarities of Go Modules, v2.x.y will be displayed as v0.x.y.
-* You will find a CircleCI configuration in [`.circleci/config.yml`](.circleci/config.yml).
-* See the [Community page](https://prometheus.io/community) for how to reach the Prometheus developers and users on various communication channels.
+To statically set roles for a machine using labels:
+```
+echo 'role{role="application_server"} 1' > /path/to/directory/role.prom.$$
+mv /path/to/directory/role.prom.$$ /path/to/directory/role.prom
+```
 
-## Contributing
+### Filtering enabled collectors
 
-Refer to [CONTRIBUTING.md](https://github.com/prometheus/prometheus/blob/main/CONTRIBUTING.md)
+The `node_exporter` will expose all metrics from enabled collectors by default.  This is the recommended way to collect metrics to avoid errors when comparing metrics of different families.
 
-## License
+For advanced use the `node_exporter` can be passed an optional list of collectors to filter metrics. The `collect[]` parameter may be used multiple times.  In Prometheus configuration you can use this syntax under the [scrape config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#<scrape_config>).
 
-Apache License 2.0, see [LICENSE](https://github.com/prometheus/prometheus/blob/main/LICENSE).
+```
+  params:
+    collect[]:
+      - foo
+      - bar
+```
 
-[hub]: https://hub.docker.com/r/prom/prometheus/
-[circleci]: https://circleci.com/gh/prometheus/prometheus
-[quay]: https://quay.io/repository/prometheus/prometheus
+This can be useful for having different Prometheus servers collect specific metrics from nodes.
 
+## Development building and running
 
-## Features
+Prerequisites:
 
-### Current Features
+* [Go compiler](https://golang.org/dl/)
+* RHEL/CentOS: `glibc-static` package.
 
-* Support for major platforms: Windows, Linux, macOS, Raspberry Pi, etc.
-* Automatically detects new episodes
-* Can scan your existing library and download any missing episodes
-* Can watch for better quality of the episodes you already have and do an automatic upgrade. eg. from DVD to Blu-Ray
-* Automatic failed download handling will try another release if one fails
-* Manual search so you can pick any release or to see why a release was not downloaded automatically
-* Fully configurable episode renaming
-* Full integration with SABnzbd and NZBGet
-* Full integration with Kodi, Plex (notification, library update, metadata)
-* Full support for specials and multi-episode releases
-* And a beautiful UI
+Building:
+
+    git clone https://github.com/prometheus/node_exporter.git
+    cd node_exporter
+    make build
+    ./node_exporter <flags>
+
+To see all available configuration flags:
+
+    ./node_exporter -h
+
+## Running tests
+
+    make test
+
+## TLS endpoint
+
+** EXPERIMENTAL **
+
+The exporter supports TLS via a new web configuration file.
+
+```console
+./node_exporter --web.config.file=web-config.yml
+```
+
+See the [exporter-toolkit https package](https://github.com/prometheus/exporter-toolkit/blob/v0.1.0/https/README.md) for more details.
+
+[travis]: https://travis-ci.org/prometheus/node_exporter
+[hub]: https://hub.docker.com/r/prom/node-exporter/
+[circleci]: https://circleci.com/gh/prometheus/node_exporter
+[quay]: https://quay.io/repository/prometheus/node-exporter
+[goreportcard]: https://goreportcard.com/report/github.com/prometheus/node_exporter
 
 ---
-
-##### [Official Prometheus GitHub Repository](https://github.com/Prometheus/Prometheus)
+##### [Official Prometheus GitHub Repository](https://github.com/prometheus/node_exporter)
