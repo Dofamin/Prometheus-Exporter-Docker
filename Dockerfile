@@ -30,7 +30,7 @@ RUN apt -y update > /dev/null 2>&1;\
     rm -rf /root/.npm > /dev/null 2>&1; \
     mkdir /srv/config > /dev/null 2>&1;
 # HEALTHCHECK
-HEALTHCHECK --interval=60s --timeout=30s --start-period=5s CMD curl -f http://localhost:9090 || exit 1
+HEALTHCHECK --interval=60s --timeout=30s --start-period=5s CMD curl -f http://localhost:9100 || exit 1
 # Expose Ports:
 EXPOSE 9100
 WORKDIR /srv/node_exporter
